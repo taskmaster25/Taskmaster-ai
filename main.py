@@ -1,41 +1,33 @@
+import threading
+from flask import Flask
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-# Your credentials
+# Your credentials (be careful exposing this publicly!)
 BOT_TOKEN = "7983002268:AAFXTyhMfomoujNmVZGIqx-jGqdwl31v1FY"
-ADMIN_IDS = [6996741395]
-BAD_WORDS = ["badword1", "badword2", "idiot", "stupid"]
+ADMIN_ID = 6996741395
 
 # Start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Hi! I'm TaskMaster AI — ready to assist your group!")
-
-# Welcome new members
-async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for user in update.message.new_chat_members:
-        await update.message.reply_text(f"Welcome, {user.first_name}!")
-
-# Block bad words
-async def filter_bad_words(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message_text = update.message.text.lower()
-    if any(bad_word in message_text for bad_word in BAD_WORDS):
-        await update.message.delete()
-        await update.message.reply_text("⚠️ Please avoid using inappropriate language.")
-
-# Admin command example
-async def admin_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id in ADMIN_IDS:
-        await update.message.reply_text("✅ Admin command executed.")
+    if update.message.chat.id == ADMIN_ID:
+        await update.message.reply_text("Hello Admin! I'm TaskMaster AI.")
     else:
-        await update.message.reply_text("❌ This command is only for admins.")
+        await update.message.reply_text("Hello! I'm TaskMaster AI.")
 
-# App setup
-app = ApplicationBuilder().token(BOT_TOKEN).build()
+# Run the Telegram bot
+def run_bot():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.run_polling()
 
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("admin", admin_command))
-app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
-app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), filter_bad_words))
+# Dummy Flask web server to keep Render alive
+web_app = Flask(__name__)
 
-print("Bot is running...")
-app.run_polling()
+@web_app.route('/')
+def home():
+    return "Bot is running!"
+
+# Start both Flask and the bot
+if __name__ == "__main__":
+    threading.Thread(target=run_bot).start()
+    web_app.run(host="0.0.0.0", port=5000)
